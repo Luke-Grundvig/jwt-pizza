@@ -212,3 +212,88 @@ test('purchase with login', async ({ page }) => {
     await expect(page.getByRole('heading')).toContainText('Sorry to see you go');
     await page.getByRole('button', { name: 'Close' }).click();
   });
+
+  test('register new diner, navagate pages', async ({ page }) => {
+
+    await page.route('*/**/api/auth', async (route) => {
+        if (route.request().method() === 'POST') {
+          const registerReq = { "name": "Luke Grundvig", "email": "d@jwt.com", "password": "d" };
+          const registerRes = {
+            "user": {
+              "name": "Luke Grundvig",
+              "email": "d@jwt.com",
+              "roles": [
+                {
+                  "role": "diner"
+                }
+              ],
+              "id": 152
+            },
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiTHVrZSBHcnVuZHZpZyIsImVtYWlsIjoiZEBqd3QuY29tIiwicm9sZXMiOlt7InJvbGUiOiJkaW5lciJ9XSwiaWQiOjE1MiwiaWF0IjoxNzM5MzMzMzQ0fQ.G2FhDSR9UrSXmU99BoZsPqgD30IttG0BR4xq-rE-jUQ"
+          };
+          expect(route.request().postDataJSON()).toMatchObject(registerReq);
+          await route.fulfill({ json: registerRes });
+        }
+      });
+
+      await page.route('*/**/api/franchise/152', async (route) => {
+        const franchiseRes = [];
+        expect(route.request().method()).toBe('GET');
+        await route.fulfill({ json: franchiseRes });
+      });
+
+      await page.route('*/**/api/order', async (route) => {
+        const franchiseRes = {
+            "dinerId": 152,
+            "orders": [],
+            "page": 1
+          };
+        expect(route.request().method()).toBe('GET');
+        await route.fulfill({ json: franchiseRes });
+      });
+
+      await page.route('*/**/api/auth', async (route) => {
+        if (route.request().method() === 'DELETE') {
+            const logoutRes = { "message": "logout successful" };
+            await route.fulfill({ json: logoutRes });
+        }
+      });
+
+    await page.goto('http://localhost:5173/');
+
+    //register new diner
+    await page.getByRole('link', { name: 'Register' }).click();
+    await page.getByRole('textbox', { name: 'Full name' }).click();
+    await page.getByRole('textbox', { name: 'Full name' }).fill('Luke Grundvig');
+    await page.getByRole('textbox', { name: 'Email address' }).click();
+    await page.getByRole('textbox', { name: 'Email address' }).fill('d@jwt.com');
+    await page.getByRole('textbox', { name: 'Password' }).click();
+    await page.getByRole('textbox', { name: 'Password' }).fill('d');
+    await page.getByRole('button', { name: 'Register' }).click();
+
+    //navagate to pages
+    await page.getByRole('link', { name: 'History' }).click();
+    await expect(page.getByRole('heading')).toContainText('Mama Rucci, my my');
+    await expect(page.getByRole('main')).toContainText('It all started in Mama Ricci\'s kitchen. She would delight all of the cousins with a hot pie in any style they could think of Milanese, Chicago deep dish, Detroit square pan, Neapolitan, or even fusion flatbread.Pizza has a long and rich history that dates back thousands of years. Its origins can be traced back to ancient civilizations such as the Egyptians, Greeks, and Romans. The ancient Egyptians were known to bake flatbreads topped with various ingredients, similar to modern-day pizza. In ancient Greece, they had a dish called "plakous" which consisted of flatbread topped with olive oil, herbs, and cheese.However, it was the Romans who truly popularized pizza-like dishes. They would top their flatbreads with various ingredients such as cheese, honey, and bay leaves.Fast forward to the 18th century in Naples, Italy, where the modern pizza as we know it today was born. Neapolitan pizza was typically topped with tomatoes, mozzarella cheese, and basil. It quickly became a favorite among the working class due to its affordability and delicious taste. In the late 19th century, pizza made its way to the United States through Italian immigrants.It gained popularity in cities like New York and Chicago, where pizzerias started popping up. Today, pizza is enjoyed worldwide and comes in countless variations and flavors. However, the classic Neapolitan pizza is still a favorite among many pizza enthusiasts. This is especially true if it comes from JWT Pizza!');
+    await page.getByRole('link', { name: 'About' }).click();
+    await page.getByRole('contentinfo').getByRole('link', { name: 'Franchise' }).click();
+    await expect(page.getByRole('main')).toContainText('So you want a piece of the pie?');
+  });
+
+  test('login as admin, open and close a franchise', async ({ page }) => {
+    await page.goto('http://localhost:5173/');
+    await page.getByRole('link', { name: 'Login' }).click();
+    await page.getByRole('textbox', { name: 'Email address' }).fill('a@jwt.com');
+    await page.getByRole('textbox', { name: 'Password' }).click();
+    await page.getByRole('textbox', { name: 'Password' }).fill('admin');
+    await page.getByRole('button', { name: 'Login' }).click();
+    await page.getByRole('link', { name: 'Admin' }).click();
+    await page.getByRole('button', { name: 'Add Franchise' }).click();
+    await page.getByRole('textbox', { name: 'franchise name' }).click();
+    await page.getByRole('textbox', { name: 'franchise name' }).fill('pizzapizza');
+    await page.getByRole('textbox', { name: 'franchisee admin email' }).click();
+    await page.getByRole('textbox', { name: 'franchisee admin email' }).fill('a@jwt.com');
+    await page.getByRole('button', { name: 'Create' }).click();
+    await page.getByRole('row', { name: 'pizzapizza 常用名字 Close' }).getByRole('button').click();
+    await page.getByRole('button', { name: 'Close' }).click();
+  });
