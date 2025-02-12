@@ -186,9 +186,6 @@ test('purchase with login', async ({ page }) => {
         await route.fulfill({ json: franchiseRes });
       });
 
-
-
-
     await page.goto('http://localhost:5173/');
 
     //login as franchisee
@@ -349,6 +346,9 @@ test('purchase with login', async ({ page }) => {
               };
             expect(route.request().postDataJSON()).toMatchObject(franchiseReq);
             await route.fulfill({ json: franchiseRes });
+        } else if (route.request().method() === 'DELETE') {
+            const logoutRes = { "message": "logout successful" };
+            await route.fulfill({ json: logoutRes });
         }
       });
 
@@ -388,9 +388,9 @@ test('purchase with login', async ({ page }) => {
     await page.getByRole('textbox', { name: 'franchisee admin email' }).fill('a@jwt.com');
     await page.getByRole('button', { name: 'Create' }).click();
 
-    //close franchise
-    //await page.getByRole('row', { name: 'pizzapizza 常用名字 Close' }).getByRole('button').click();
-    //await page.getByRole('button', { name: 'Close' }).click();
+    //logout
+    await page.getByRole('link', { name: 'admin-dashboard' }).click();
+    await page.getByRole('link', { name: 'Logout' }).click();
   });
 
   test('not found and incorrect login', async ({ page }) => {
@@ -409,22 +409,55 @@ test('purchase with login', async ({ page }) => {
     await page.goto('http://localhost:5173/cake');
   });
 
-  test('register and logout', async ({ page }) => {
+  test('go to diner dashboard and logout', async ({ page }) => {
+
+    await page.route('*/**/api/auth', async (route) => {
+        if (route.request().method() === 'PUT') {
+            const loginReq = { email: 'd@jwt.com', password: 'diner' };
+            const loginRes = { user: { id: 3, name: 'Kai Chen', email: 'd@jwt.com', roles: [{ role: 'diner' }] }, token: 'abcdef' };
+            expect(route.request().postDataJSON()).toMatchObject(loginReq);
+            await route.fulfill({ json: loginRes });
+        } else if (route.request().method() === 'DELETE') {
+            const logoutRes = { "message": "logout successful" };
+            await route.fulfill({ json: logoutRes });
+        }
+
+      });
 
     await page.goto('http://localhost:5173/');
 
-    const randomString = Math.random().toString(36).substring(2, 12);
-
-    await page.getByRole('link', { name: 'Register' }).click();
-    await page.getByRole('textbox', { name: 'Full Name' }).fill(randomString);
-    await page.getByRole('textbox', { name: 'Email address' }).fill(randomString + '@jwt.com');
+    //login
+    await page.getByRole('link', { name: 'Login' }).click();
+    await page.getByRole('textbox', { name: 'Email address' }).click();
+    await page.getByRole('textbox', { name: 'Email address' }).fill('d@jwt.com');
     await page.getByRole('textbox', { name: 'Password' }).click();
-    await page.getByRole('textbox', { name: 'Password' }).fill(randomString);
-    await page.getByRole('button', { name: 'Register' }).click();
-    await page.getByRole('button', { name: 'Order' }).click();
+    await page.getByRole('textbox', { name: 'Password' }).fill('diner');
+    await page.getByRole('button', { name: 'Login' }).click();
 
-    
-    await page.goto('http://localhost:5173/diner-dashboard');
-    
+    //navigate to diner dashboard
+    await page.getByRole('link', { name: 'kc' }).click();
+
+    //logout
     await page.getByRole('link', { name: 'Logout' }).click();
   });
+
+
+//   test('register and logout', async ({ page }) => {
+
+//     await page.goto('http://localhost:5173/');
+
+//     const randomString = Math.random().toString(36).substring(2, 12);
+
+//     await page.getByRole('link', { name: 'Register' }).click();
+//     await page.getByRole('textbox', { name: 'Full Name' }).fill(randomString);
+//     await page.getByRole('textbox', { name: 'Email address' }).fill(randomString + '@jwt.com');
+//     await page.getByRole('textbox', { name: 'Password' }).click();
+//     await page.getByRole('textbox', { name: 'Password' }).fill(randomString);
+//     await page.getByRole('button', { name: 'Register' }).click();
+//     await page.getByRole('button', { name: 'Order' }).click();
+
+    
+//     //await page.goto('http://localhost:5173/diner-dashboard');
+    
+//     //await page.getByRole('link', { name: 'Logout' }).click();
+//   });
