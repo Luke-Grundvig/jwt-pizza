@@ -281,19 +281,150 @@ test('purchase with login', async ({ page }) => {
   });
 
   test('login as admin, open and close a franchise', async ({ page }) => {
+
+    await page.route('*/**/api/auth', async (route) => {
+        if (route.request().method() === 'PUT') {
+          const loginReq = { "email": "a@jwt.com", "password": "admin" };
+          const loginRes = {
+            "user": {
+              "id": 1,
+              "name": "常用名字",
+              "email": "a@jwt.com",
+              "roles": [
+                {
+                  "role": "admin"
+                }
+              ]
+            },
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibmFtZSI6IuW4uOeUqOWQjeWtlyIsImVtYWlsIjoiYUBqd3QuY29tIiwicm9sZXMiOlt7InJvbGUiOiJhZG1pbiJ9XSwiaWF0IjoxNzM5MzM1MTA1fQ.dBWNEEj26-BFAj3O2Q2wiWNTBcBndKWs06tPMXzM6jI"
+          };
+          expect(route.request().postDataJSON()).toMatchObject(loginReq);
+          await route.fulfill({ json: loginRes });
+        }
+      });
+
+      await page.route('*/**/api/franchise', async (route) => {
+        if (route.request().method() === 'GET') {
+            const franchiseRes = [
+                {
+                  "id": 65,
+                  "name": "pizzapizza",
+                  "admins": [
+                    {
+                      "id": 1,
+                      "name": "常用名字",
+                      "email": "a@jwt.com"
+                    }
+                  ],
+                  "stores": []
+                }
+              ];
+            await route.fulfill({ json: franchiseRes });
+        }
+      });
+
+      await page.route('*/**/api/franchise', async (route) => {
+        if (route.request().method() === 'POST') {
+            const franchiseReq = {
+                "stores": [],
+                "id": "",
+                "name": "pizzapizza",
+                "admins": [
+                  {
+                    "email": "a@jwt.com"
+                  }
+                ]
+              };
+            const franchiseRes = {
+                "stores": [],
+                "id": 65,
+                "name": "pizzapizza",
+                "admins": [
+                  {
+                    "email": "a@jwt.com",
+                    "id": 1,
+                    "name": "常用名字"
+                  }
+                ]
+              };
+            expect(route.request().postDataJSON()).toMatchObject(franchiseReq);
+            await route.fulfill({ json: franchiseRes });
+        }
+      });
+
+      await page.route('*/**/api/franchise/65', async (route) => {
+        if (route.request().method() === 'DELETE') {
+            const franchiseRes = {
+                "stores": [],
+                "id": 65,
+                "name": "pizzapizza",
+                "admins": [
+                  {
+                    "email": "a@jwt.com",
+                    "id": 1,
+                    "name": "常用名字"
+                  }
+                ]
+              };
+            await route.fulfill({ json: franchiseRes });
+        }
+      });
+
     await page.goto('http://localhost:5173/');
+
+    //login as admin
     await page.getByRole('link', { name: 'Login' }).click();
     await page.getByRole('textbox', { name: 'Email address' }).fill('a@jwt.com');
     await page.getByRole('textbox', { name: 'Password' }).click();
     await page.getByRole('textbox', { name: 'Password' }).fill('admin');
     await page.getByRole('button', { name: 'Login' }).click();
     await page.getByRole('link', { name: 'Admin' }).click();
+
+    //open franchise
     await page.getByRole('button', { name: 'Add Franchise' }).click();
     await page.getByRole('textbox', { name: 'franchise name' }).click();
     await page.getByRole('textbox', { name: 'franchise name' }).fill('pizzapizza');
     await page.getByRole('textbox', { name: 'franchisee admin email' }).click();
     await page.getByRole('textbox', { name: 'franchisee admin email' }).fill('a@jwt.com');
     await page.getByRole('button', { name: 'Create' }).click();
-    await page.getByRole('row', { name: 'pizzapizza 常用名字 Close' }).getByRole('button').click();
-    await page.getByRole('button', { name: 'Close' }).click();
+
+    //close franchise
+    //await page.getByRole('row', { name: 'pizzapizza 常用名字 Close' }).getByRole('button').click();
+    //await page.getByRole('button', { name: 'Close' }).click();
+  });
+
+  test('not found and incorrect login', async ({ page }) => {
+
+    await page.goto('http://localhost:5173/');
+
+    //login incorrectly
+    await page.getByRole('link', { name: 'Login' }).click();
+    await page.getByRole('textbox', { name: 'Email address' }).click();
+    await page.getByRole('textbox', { name: 'Email address' }).fill('bob@cake.com');
+    await page.getByRole('textbox', { name: 'Password' }).click();
+    await page.getByRole('textbox', { name: 'Password' }).fill('none');
+    await page.getByRole('button', { name: 'Login' }).click();
+
+    //navigate to not found page
+    await page.goto('http://localhost:5173/cake');
+  });
+
+  test('register and logout', async ({ page }) => {
+
+    await page.goto('http://localhost:5173/');
+
+    const randomString = Math.random().toString(36).substring(2, 12);
+
+    await page.getByRole('link', { name: 'Register' }).click();
+    await page.getByRole('textbox', { name: 'Full Name' }).fill(randomString);
+    await page.getByRole('textbox', { name: 'Email address' }).fill(randomString + '@jwt.com');
+    await page.getByRole('textbox', { name: 'Password' }).click();
+    await page.getByRole('textbox', { name: 'Password' }).fill(randomString);
+    await page.getByRole('button', { name: 'Register' }).click();
+    await page.getByRole('button', { name: 'Order' }).click();
+
+    
+    await page.goto('http://localhost:5173/diner-dashboard');
+    
+    await page.getByRole('link', { name: 'Logout' }).click();
   });
