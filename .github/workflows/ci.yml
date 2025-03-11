@@ -29,6 +29,7 @@ jobs:
 
       - name: Build
         run: |
+          printf '{"version": "%s" }' ${{steps.set_version.outputs.version}} > public/version.json
           npm ci && npm run build
 
       - name: Update dist artifact
